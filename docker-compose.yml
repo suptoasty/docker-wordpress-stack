@@ -1,0 +1,51 @@
+services:
+  mysql:
+    image: mariadb:${MARIADB_VERSION:-latest}
+    container_name: mysql
+    restart: always
+    env_file: .env
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-password}"
+      MYSQL_USER: "${MYSQL_USER:-root}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:-password}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-wordpress}"
+
+  wordpress:
+    depends_on:
+      - mysql
+    image: "wordpress:${WORDPRESS_VERSION:-fpm-alpine}"
+    container_name: wordpress
+    restart: always
+    env_file: .env
+    volumes:
+      - ./data/html:/var/www/html
+      - ./php/upload.ini:/usr/local/etc/php/conf.d/uploads.ini
+    environment:
+      WORDPRESS_DB_HOST: "${WORDPRESS_DB_HOST:-mysql}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-password}"
+      WORDPRESS_DB_NAME: "${WORDPRESS_DB_NAME:-wordpress}"
+      WORDPRESS_DB_USER: "${WORDPRESS_DB_USER:-root}"
+      WORDPRESS_DB_PASSWORD: "${WORDPRESS_DB_PASSWORD:-password}"
+      WORDPRESS_TABLE_PREFIX: "${WORDPRESS_TABLE_PREFIX:-wp_}"
+    links:
+      - mysql
+    # ports:
+    #   - "3001:21"
+
+  nginx:
+    depends_on:
+      - wordpress
+    image: nginx:${NGINX_VERSION:-latest}
+    container_name: nginx
+    restart: always
+    env_file: .env
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./data/html:/var/www/html
+      - ./nginx:/etc/nginx/conf.d
+    links:
+      - wordpress
